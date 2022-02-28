@@ -1,8 +1,16 @@
 const express = require('express');
+const bodyParser = require('body-parser')
+
+// create application/json parser
+var jsonParser = bodyParser.json()
+ 
+// create application/x-www-form-urlencoded parser
+var urlencodedParser = bodyParser.urlencoded({ extended: false })
+
 
 const app = express();
 
-app.post('/notify', (req, res) => {
+app.post('/notify',jsonParser, (req, res) => {
     console.log(req.body);
   });
 
