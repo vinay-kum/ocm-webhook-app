@@ -256,7 +256,7 @@ function updateContent(res, token, arrData, contentId,documentName) {
   //console.log(tags);
   var payload = {
     id: contentId,
-    type: "KYC Asset",
+    type: "KYC-Asset",
     typeCategory: "DigitalAssetType",
     repositoryId: "57277A5B27D54A158CF94E6C0B3386E4",
     name: documentName,
