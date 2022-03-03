@@ -22,7 +22,9 @@
     "config": "^3.3.7",
     "express": "^4.17.3",
     "express-async-handler": "^1.2.0",
+    "form-data": "^4.0.0",
     "fs": "^0.0.1-security",
+    "gm": "^1.23.1",
     "oci-aivision": "^2.15.0",
     "oci-sdk": "^2.15.0"
   }

@@ -3,6 +3,8 @@ const bodyParser = require("body-parser");
 const axios = require("axios");
 const config = require("config");
 const fs = require("fs");
+const gm = require("gm").subClass({ imageMagick: true });
+
 const { spawnSync } = require("child_process");
 
 const configurationFilePath = "~/.oci/config";
@@ -16,8 +18,81 @@ var urlencodedParser = bodyParser.urlencoded({ extended: false });
 
 const app = express();
 
-//Test Method for testing CLI call
 app.post("/test", jsonParser, (req, res) => {
+  console.log("test Start");
+
+  let fileName = "./img/dilip-pan.jpeg";
+  let watermark = "./img/approved-stamp.png";
+  let dim = {
+    x0: 0.36333333333333334,
+    y0: 0.39893617021276595,
+    x1: 0.53,
+    y1: 0.46808510638297873,
+  };
+
+  // gm(fileName).size((err,value)=>{
+  //   if(!err){
+  //     let w = value.width;
+  //     let h = value.height;
+  //     gm(fileName).drawRectangle(dim.x0*w,dim.y0*h,dim.x1*w,dim.y1*h).write("./img/output/1.jpeg", (err) => {
+  //       if(!err)
+  //         console.log("Done");
+  //       else
+  //       console.log(err);
+  //     })
+  //   }
+
+  //   else
+  //   console.log(err)
+  // })
+
+  // gm.command("composite").in("-gravity", "center").in(fileName).in(watermark).write("./img/output/1.jpeg", (err) => {
+  //         if(!err)
+  //           console.log("Done");
+  //         else
+  //         console.log(err);
+  //       })
+  //   console.log("test End");
+
+  // gm()
+  //  //.in('-page', '+0+0')
+  //  .in(fileName)
+  //  //.in('-page', '+10+20') // location of smallIcon.jpg is x,y -> 10, 20
+  //  .in(watermark)
+  //  .mosaic().gravity("Center")
+  //  .write("./img/output/1.jpeg", function (err) {
+  //     if (!err)
+  //     console.log("Done")
+  //     else
+  //     console.log(err);
+  //  });
+  // gm(fileName).fill('#ffffff')
+  //             .font('Arial', 18,"red") // I didn't wanted to play with fonts, so used normal default thing (:
+  //             .drawText(0, 0, "APPROVED","Center").highlightColor("red").write("./img/output/1.jpeg", function (err) {
+  //                   if (!err)
+  //                   console.log("Done")
+  //                   else
+  //                   console.log(err);
+  //                });
+
+  gm(fileName).size((err, value) => {
+    if (!err) {
+      let w = value.width;
+      let h = value.height;
+
+      gm(fileName)
+        .composite(watermark)
+        .geometry("+" + w / 2 + "+" + h / 2)
+        .write("./img/output/1.jpeg", function (err) {
+          if (!err) console.log("Done");
+          else console.log(err);
+        });
+    }
+  });
+});
+
+//Test Method for testing CLI call
+app.post("/test1", jsonParser, (req, res) => {
   console.log("Start");
 
   const ls = spawnSync("ls", ["-la"], { encoding: "utf8" });
@@ -39,11 +114,28 @@ app.post("/notify", jsonParser, (req, res) => {
   let contentId, documentName;
 
   if (req.body.event.name === "DIGITALASSET_CREATED") {
+
     contentId = req.body.entity.id;
     documentName = req.body.entity.name;
-    console.log("Payload Content ID:" + contentId);
-    downloadContent(res, accessToken, contentId, documentName);
-  } else {
+    console.log("New Asset Payload Content ID:" + contentId);
+    downloadContent({
+      response: res,
+      token: accessToken,
+      contentId: contentId,
+      documentName: documentName,
+    },extractData);
+  } else if(req.body.event.name === "DIGITALASSET_APPROVED") {
+    contentId = req.body.entity.id;
+    documentName = req.body.entity.name;
+    console.log("Approved Asset Payload Content ID:" + contentId);
+    downloadContent({
+      response: res,
+      token : accessToken,
+      contentId : contentId,
+      documentName: documentName
+    },watermarkContent);
+  }
+  else {
     res.send("Invalid payload to process");
   }
   //Get content ID from payload
@@ -94,10 +186,10 @@ function getAuthToken() {
     });
 }
 
-function getContentDetails(token, contentID) {
+function getContentDetails(token, contentId) {
   reqToken = axios
     .request({
-      url: `${config.get("apiURL")}items/${contentID}`,
+      url: `${config.get("apiURL")}items/${contentId}`,
       method: "get",
       baseURL: config.get("baseURL"),
       headers: { Authorization: `Bearer ${token}` },
@@ -109,15 +201,43 @@ function getContentDetails(token, contentID) {
       console.log("Error content Details" + err);
     });
 }
+async function watermarkContent(params){
+console.log("inside watermark Start");
+  //generate watermark
+  let fileName = params.fileName;
+  gm(fileName).size((err, value) => {
+    if (!err) {
+      let w = value.width;
+      let h = value.height;
 
-async function downloadContent(res, token, contentId, documentName) {
-  console.log("Inside downloadContent");
-  const contentURL = config.get("apiURL") + "assets/" + contentId + "/native";
+      gm(fileName)
+        .composite("./img/approved-stamp.png")
+        .geometry("+" + w / 2 + "+" + h / 2)
+        .write(fileName, function (err) {
+          if (!err) {
+            console.log("Watermark Generated!!!");
+            updateItem(params,'Y');
+        }
+          else console.log(err);
+        });
+    }
+  });
+
+  //upload content
+  
+
+}
+
+async function downloadContent(params,callback) {
+  //res, token, contentId, documentName
+  console.log("Inside downloadContent with params:" + params);
+  const contentURL =
+    config.get("apiURL") + "assets/" + params.contentId + "/native";
   console.log("API URL:" + contentURL);
 
   const header = {
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${params.token}`,
       "Content-Type": "application/json",
     },
     responseType: "stream",
@@ -131,7 +251,7 @@ async function downloadContent(res, token, contentId, documentName) {
 
       if (resContentType.indexOf("image/") > -1) {
         var ext = resContentType.replace("image/", "");
-        fileName = contentId + "." + ext;
+        fileName = params.contentId + "." + ext;
         console.log("FileName:" + fileName);
         var writer = fs.createWriteStream(fileName);
       } else {
@@ -144,7 +264,8 @@ async function downloadContent(res, token, contentId, documentName) {
       var stream = response.data.pipe(writer);
       stream.on("finish", () => {
         console.log("Inside Dwonload Content: complete writting");
-        extractData(res, token, fileName, contentId, documentName);
+        params["fileName"] = fileName;
+        callback(params);
       });
       //imageNode.src = imgUrl
     })
@@ -157,12 +278,14 @@ async function downloadContent(res, token, contentId, documentName) {
     });
 }
 
-async function extractData(res, token, fileName, contentId, documentName) {
-  console.log("Inside extract Data");
+async function extractData(params) {
+  //res, token, fileName, contentId, documentName
+  console.log("Inside extract Data with params:" + params);
 
   const aivision = require("oci-aivision");
   const common = require("oci-common");
-  let fileContent = fs.readFileSync(fileName, { encoding: "base64" });
+  let fileContent = fs.readFileSync(params.fileName, { encoding: "base64" });
+
   const provider = new common.ConfigFileAuthenticationDetailsProvider(
     configurationFilePath,
     profile
@@ -204,22 +327,26 @@ async function extractData(res, token, fileName, contentId, documentName) {
   console.log("Inside extractData:Call function");
   analyzeDocumentResponse.then(
     function (value) {
-      let text;
       console.log("This is success");
-
+      let arrData = [];
       if (value.analyzeDocumentResult.documentMetadata.pageCount > 0) {
         let pages = value.analyzeDocumentResult.pages;
 
         for (i = 0; i < pages.length; i++) {
           let words = pages[i].words;
           for (w = 0; w < words.length; w++) {
-            text = text + words[w].text + "\n";
+            arrData.push({
+              text: words[w].text,
+              x0: words[w].boundingPolygon.normalizedVertices[0].x,
+              y0: words[w].boundingPolygon.normalizedVertices[0].y,
+              x1: words[w].boundingPolygon.normalizedVertices[2].x,
+              y1: words[w].boundingPolygon.normalizedVertices[2].y,
+            });
           }
         }
       }
-      let arrData = text.split("\n");
       for (i = 0; i < arrData.length; i++) {
-        console.log("Index -" + i + " : " + arrData[i]);
+        console.log("Index -" + i + " : " + arrData[i].text);
       }
       // console.log(
       //   "Document Type :" +
@@ -235,63 +362,108 @@ async function extractData(res, token, fileName, contentId, documentName) {
       // console.log("Father's Name :" + arrData[28] + " " + arrData[29]);
       // console.log("Date of Birth :" + arrData[38]);
       // console.log("PAN Number :" + arrData[17]);
-      updateContent(res, token, arrData, contentId, documentName);
+      params["data"] = arrData;
+      redactContent(params);
     },
     function (error) {
-      console.log("This is error" + JSON.stringify(error));
+      console.log("This is error" + error);
       console.log(error);
     }
   );
 }
 
-function updateContent(res, token, arrData, contentId, documentName) {
-  const updateURL = config.get("apiURL") + "items/" + contentId;
+async function redactContent(params) {
+  //res, token, arrData, contentId, documentName
+  console.log("Inside redactContent with param:" + params);
+
+  gm(params.fileName).size((err, value) => {
+    if (!err) {
+      let w = value.width;
+      let h = value.height;
+      let dim = getDocumentData(params.data).region;
+      gm(params.fileName)
+        .drawRectangle(dim.x0 * w, dim.y0 * h, dim.x1 * w, dim.y1 * h)
+        .write(params.fileName, (err) => {
+          if (!err) {
+            console.log("Done");
+            updateItem(params);
+          } else console.log(err);
+        });
+    }
+  });
+}
+
+async function updateItem(params,fileOnly ='N') { //fileOnly Y or N, default is N
+  console.log("Inside updateItem with param:" + params);
+
+  const updateURL =  config.get("apiURL") + "items/" + params.contentId;
+  const FormData = require("form-data");
+
+  // Create a new form instance
+  const form = new FormData();
+
   console.log(updateURL);
-  let documentData = getDocumentData(arrData);
+  
   //console.log(tags);
+  if(fileOnly === 'N'){
+  let documentData = getDocumentData(params.data);
   var payload = {
-    id: contentId,
+    id: params.contentId,
     type: "KYC-Asset",
     typeCategory: "DigitalAssetType",
-    repositoryId: "57277A5B27D54A158CF94E6C0B3386E4",
-    name: documentName,
+    repositoryId: config.get("repoId"),
+    name: params.documentName,
     fields: {
       document_id: documentData.documentId,
       customer_name: documentData.name,
-      document_type: getDocumentType(arrData),
+      document_type: getDocumentType(params.data),
     },
   };
+  form.append("item", JSON.stringify(payload));
+}
+  console.log("Before Form creation" + __dirname + params.fileName);
+  const file = fs.readFileSync(params.fileName);
+
+  console.log(JSON.stringify(payload));
+
+  //form.append("item", JSON.stringify(payload));
+  form.append("file", file,{filename : params.fileName, "Content-Type" : "image/jpeg"});
 
   var header = {
     headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      "X-Requested-With": "XMLHttpRequest",
+      "Authorization" : `Bearer ${params.token}`,
+      ...form.getHeaders(),
+      "X-Requested-With": "XMLHttpRequest"
     },
   };
   //console.log(contentUrl);
   //console.log(payload);
-  axios
-    .put(updateURL, payload, header)
+  console.log("calling service");
+  await axios
+    .put(updateURL, form, header)
     .then(function (response) {
-      //console.log(response);
+      console.log(response);
 
       // Fs.unlink(fileName, (err) => {
       //     if (err) throw err;
       //     console.log('successfully deleted '+fileName);
       // });
-      res.sendStatus(200);
+      params.response.sendStatus(200);
     })
     .catch(function (error) {
+      console.log("Error occor"+error );
+      console.log(JSON.stringify(error));
       console.log(error);
+      console.log(error.response);
     });
 }
+
 function getDocumentType(arrData) {
-  if (arrData && arrData[4] == "TAX") {
+  if (arrData && arrData[4].text == "TAX") {
     console.log("Identified as PAN Card");
     return "PAN Card";
   }
-  if (arrData && arrData[5] == "AADHAR") {
+  if (arrData && arrData[5].text == "AADHAR") {
     console.log("Identified as Aadhar Card");
     return "Aadhar Card";
   }
@@ -312,18 +484,27 @@ function getDocumentData(arrData) {
 }
 
 function getPANData(arrData) {
-  console.log("inside get PAN Data")
-  let documentId, name;
+  console.log("inside get PAN Data");
+  let documentId, name, region;
   for (i = 0; i < arrData.length; i++) {
     //Get PAN Card Number
-    if (arrData[i] == "Card") documentId = arrData[i + 1];
-    if (arrData[i] == "Name") {
-      name = arrData[i + 1] + " " + arrData[i + 2];
+    if (arrData[i].text == "Number") {
+      //We are using "Number" because sometime Card doesn't get extracted well
+      documentId = arrData[i + 2].text;
+      region = {
+        x0: arrData[i + 2].x0,
+        y0: arrData[i + 2].x0,
+        x1: arrData[i + 2].x1,
+        y1: arrData[i + 2].y1,
+      };
+    }
+    if (arrData[i].text == "Name") {
+      name = arrData[i + 1].text + " " + arrData[i + 2].text;
       break;
     }
   }
   console.log("Document ID:" + documentId + " Name:" + name);
-  return { documentId: documentId, name: name };
+  return { documentId: documentId, name: name, region: region };
 }
 
 app.listen(config.get("server.port"), () =>
