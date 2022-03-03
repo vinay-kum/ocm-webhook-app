@@ -39,13 +39,13 @@ app.post("/notify", jsonParser, (req, res) => {
 
   const accessToken = config.get("accessToken");
   
-  let contentId,fileName;
+  let contentId,documentName;
 
   if (req.body.event.name === "DIGITALASSET_CREATED") {
     contentId = req.body.entity.id;
-    fileName = req.body.entity.name;
+    documentName = req.body.entity.name;
     console.log("Payload Content ID:" +contentId)
-    downloadContent(res, accessToken, contentId,fileName);
+    downloadContent(res, accessToken, contentId,documentName);
 
   } else {
     res.send("Invalid payload to process");
@@ -114,7 +114,7 @@ function getContentDetails(token, contentID) {
     });
 }
 
-async function downloadContent(res, token, contentId,fileName) {
+async function downloadContent(res, token, contentId,documentName) {
   console.log("Inside downloadContent");
   const contentURL = config.get("apiURL") + "assets/" + contentId + "/native/"+fileName;
   console.log("API URL:"+ contentURL);
@@ -148,7 +148,7 @@ async function downloadContent(res, token, contentId,fileName) {
       var stream = response.data.pipe(writer);
       stream.on("finish", () => {
         console.log("Inside Dwonload Content: complete writting");
-        extractData(res, token, fileName, contentId,fileName);
+        extractData(res, token, fileName, contentId,documentName);
       });
       //imageNode.src = imgUrl
     })
@@ -161,7 +161,7 @@ async function downloadContent(res, token, contentId,fileName) {
     });
 }
 
-async function extractData(res, token, fileName, contentId,fileName) {
+async function extractData(res, token, fileName, contentId,documentName) {
 
   console.log("Inside extract Data");
 
@@ -240,7 +240,7 @@ async function extractData(res, token, fileName, contentId,fileName) {
       // console.log("Father's Name :" + arrData[28] + " " + arrData[29]);
       // console.log("Date of Birth :" + arrData[38]);
       // console.log("PAN Number :" + arrData[17]);
-      updateContent(res, token, arrData, contentId,fileName);
+      updateContent(res, token, arrData, contentId,documentName);
     },
     function (error) {
       console.log("This is error" + JSON.stringify(error));
@@ -249,7 +249,7 @@ async function extractData(res, token, fileName, contentId,fileName) {
   );
 }
 
-function updateContent(res, token, arrData, contentId,fileName) {
+function updateContent(res, token, arrData, contentId,documentName) {
   const updateURL = config.get("apiURL") + "items/" + contentId;
   console.log(updateURL);
 
@@ -259,7 +259,7 @@ function updateContent(res, token, arrData, contentId,fileName) {
     type: "KYC Asset",
     typeCategory: "DigitalAssetType",
     repositoryId: "57277A5B27D54A158CF94E6C0B3386E4",
-    name: fileName,
+    name: documentName,
     fields: {
       document_id: arrData[13],
       customer_name: arrData[17] + " " + arrData[18],
