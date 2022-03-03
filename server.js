@@ -30,23 +30,19 @@ app.post("/test", jsonParser, (req, res) => {
   getAuthToken();
 });
 
-
-
 //Webhook Notification
 app.post("/notify", jsonParser, (req, res) => {
-
   console.log("Inside Notify");
 
   const accessToken = config.get("accessToken");
-  
-  let contentId,documentName;
+
+  let contentId, documentName;
 
   if (req.body.event.name === "DIGITALASSET_CREATED") {
     contentId = req.body.entity.id;
     documentName = req.body.entity.name;
-    console.log("Payload Content ID:" +contentId)
-    downloadContent(res, accessToken, contentId,documentName);
-
+    console.log("Payload Content ID:" + contentId);
+    downloadContent(res, accessToken, contentId, documentName);
   } else {
     res.send("Invalid payload to process");
   }
@@ -114,10 +110,10 @@ function getContentDetails(token, contentID) {
     });
 }
 
-async function downloadContent(res, token, contentId,documentName) {
+async function downloadContent(res, token, contentId, documentName) {
   console.log("Inside downloadContent");
   const contentURL = config.get("apiURL") + "assets/" + contentId + "/native";
-  console.log("API URL:"+ contentURL);
+  console.log("API URL:" + contentURL);
 
   const header = {
     headers: {
@@ -148,7 +144,7 @@ async function downloadContent(res, token, contentId,documentName) {
       var stream = response.data.pipe(writer);
       stream.on("finish", () => {
         console.log("Inside Dwonload Content: complete writting");
-        extractData(res, token, fileName, contentId,documentName);
+        extractData(res, token, fileName, contentId, documentName);
       });
       //imageNode.src = imgUrl
     })
@@ -161,8 +157,7 @@ async function downloadContent(res, token, contentId,documentName) {
     });
 }
 
-async function extractData(res, token, fileName, contentId,documentName) {
-
+async function extractData(res, token, fileName, contentId, documentName) {
   console.log("Inside extract Data");
 
   const aivision = require("oci-aivision");
@@ -223,24 +218,24 @@ async function extractData(res, token, fileName, contentId,documentName) {
         }
       }
       let arrData = text.split("\n");
-      for( i=0;i<arrData.length;i++){
-          console.log("Index -"+i+" : "+arrData[i]);
+      for (i = 0; i < arrData.length; i++) {
+        console.log("Index -" + i + " : " + arrData[i]);
       }
-        // console.log(
-        //   "Document Type :" +
-        //   arrData[13] +
-        //     " " +
-        //     arrData[14] +
-        //     " " +
-        //     arrData[15] +
-        //     " " +
-        //     arrData[16]
-       // );
+      // console.log(
+      //   "Document Type :" +
+      //   arrData[13] +
+      //     " " +
+      //     arrData[14] +
+      //     " " +
+      //     arrData[15] +
+      //     " " +
+      //     arrData[16]
+      // );
       // console.log("Name :" + arrData[21] + " " + arrData[22]);
       // console.log("Father's Name :" + arrData[28] + " " + arrData[29]);
       // console.log("Date of Birth :" + arrData[38]);
       // console.log("PAN Number :" + arrData[17]);
-      updateContent(res, token, arrData, contentId,documentName);
+      updateContent(res, token, arrData, contentId, documentName);
     },
     function (error) {
       console.log("This is error" + JSON.stringify(error));
@@ -249,7 +244,7 @@ async function extractData(res, token, fileName, contentId,documentName) {
   );
 }
 
-function updateContent(res, token, arrData, contentId,documentName) {
+function updateContent(res, token, arrData, contentId, documentName) {
   const updateURL = config.get("apiURL") + "items/" + contentId;
   console.log(updateURL);
   let documentData = getDocumentData(arrData);
@@ -263,7 +258,7 @@ function updateContent(res, token, arrData, contentId,documentName) {
     fields: {
       document_id: documentData.documentId,
       customer_name: documentData.name,
-      document_type: getDocumentType(arrData)
+      document_type: getDocumentType(arrData),
     },
   };
 
@@ -291,36 +286,44 @@ function updateContent(res, token, arrData, contentId,documentName) {
       console.log(error);
     });
 }
-function getDocumentType(arrData){
-  if(arrData){
-    if(arrData[9]== 'Permanent'){
-      return 'PAN Card'
-    }
-  }else{
-    return "Invalid";
+function getDocumentType(arrData) {
+  if (arrData && arrData[4] == "TAX") {
+    console.log("Identified as PAN Card");
+    return "PAN Card";
+  }
+  if (arrData && arrData[5] == "AADHAR") {
+    console.log("Identified as Aadhar Card");
+    return "Aadhar Card";
   }
 }
 
-function getDocumentData(arrData){
- if(arrData && arrData[4] == 'TAX'){
-   return getPANData(arrData);
- }
- if(arrData && arrData[5] =='AADHAR'){
-   return;
- }
- return;
+function getDocumentData(arrData) {
+  let documentType = getDocumentType(arrData);
+  if ((documentType = "PAN Card")) {
+    console.log("Identified as PAN Card");
+    return getPANData(arrData);
+  }
+  if (documentType == "Aadhar Card") {
+    console.log("Identified as Aadhar Card");
+    return;
+  }
+  console.log("Unable to identify document");
+  return;
 }
 
-function getPANData(arrData){
-  let documentId,name;
-  for(i =0; i<arrData.length; i++){
+function getPANData(arrData) {
+  console.log("inside get PAN Data")
+  let documentId, name;
+  for (i = 0; i < arrData.length; i++) {
     //Get PAN Card Number
-    if(arrData[i] == 'Card')
-       documentId = arrData[i+1];
-    if(arrData[i] == 'Name')
-       name = arrData[i+1] + " " + arrData[i+2];  
+    if (arrData[i] == "Card") documentId = arrData[i + 1];
+    if (arrData[i] == "Name") {
+      name = arrData[i + 1] + " " + arrData[i + 2];
+      break;
+    }
   }
-  return {"documentId" : documentId, "name": name}
+  console.log("Document ID:" + documentId + " Name:" + name);
+  return { documentId: documentId, name: name };
 }
 
 app.listen(config.get("server.port"), () =>
