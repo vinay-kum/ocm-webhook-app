@@ -18,6 +18,12 @@
   },
   "homepage": "https://github.com/vinay-kum/ocm-webhook-app#readme",
   "dependencies": {
-    "express": "^4.17.3"
+    "axios": "^0.26.0",
+    "config": "^3.3.7",
+    "express": "^4.17.3",
+    "express-async-handler": "^1.2.0",
+    "fs": "^0.0.1-security",
+    "oci-aivision": "^2.15.0",
+    "oci-sdk": "^2.15.0"
   }
 }
