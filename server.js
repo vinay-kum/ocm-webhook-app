@@ -116,7 +116,7 @@ function getContentDetails(token, contentID) {
 
 async function downloadContent(res, token, contentId,documentName) {
   console.log("Inside downloadContent");
-  const contentURL = config.get("apiURL") + "assets/" + contentId + "/native/"+fileName;
+  const contentURL = config.get("apiURL") + "assets/" + contentId + "/native";
   console.log("API URL:"+ contentURL);
 
   const header = {
