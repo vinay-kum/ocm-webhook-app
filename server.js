@@ -252,7 +252,7 @@ async function extractData(res, token, fileName, contentId,documentName) {
 function updateContent(res, token, arrData, contentId,documentName) {
   const updateURL = config.get("apiURL") + "items/" + contentId;
   console.log(updateURL);
-
+  let documentData = getDocumentData(arrData);
   //console.log(tags);
   var payload = {
     id: contentId,
@@ -261,8 +261,8 @@ function updateContent(res, token, arrData, contentId,documentName) {
     repositoryId: "57277A5B27D54A158CF94E6C0B3386E4",
     name: documentName,
     fields: {
-      document_id: arrData[13],
-      customer_name: arrData[17] + " " + arrData[18],
+      document_id: documentData.documentId,
+      customer_name: documentData.name,
       document_type: getDocumentType(arrData)
     },
   };
@@ -299,6 +299,28 @@ function getDocumentType(arrData){
   }else{
     return "Invalid";
   }
+}
+
+function getDocumentData(arrData){
+ if(arrData && arrData[4] == 'TAX'){
+   return getPANData(arrData);
+ }
+ if(arrData && arrData[5] =='AADHAR'){
+   return;
+ }
+ return;
+}
+
+function getPANData(arrData){
+  let documentId,name;
+  for(i =0; i<arrData.length; i++){
+    //Get PAN Card Number
+    if(arrData[i] == 'Card')
+       documentId = arrData[i+1];
+    if(arrData[i] == 'Name')
+       name = arrData[i+1] + " " + arrData[i+2];  
+  }
+  return {"documentId" : documentId, "name": name}
 }
 
 app.listen(config.get("server.port"), () =>
