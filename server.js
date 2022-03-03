@@ -226,20 +226,20 @@ async function extractData(res, token, fileName, contentId,fileName) {
       for( i=0;i<arrData.length;i++){
           console.log("Index -"+i+" : "+arrData[i]);
       }
-        console.log(
-          "Document Type :" +
-          arrData[13] +
-            " " +
-            arrData[14] +
-            " " +
-            arrData[15] +
-            " " +
-            arrData[16]
-        );
-      console.log("Name :" + arrData[21] + " " + arrData[22]);
-      console.log("Father's Name :" + arrData[28] + " " + arrData[29]);
-      console.log("Date of Birth :" + arrData[38]);
-      console.log("PAN Number :" + arrData[17]);
+        // console.log(
+        //   "Document Type :" +
+        //   arrData[13] +
+        //     " " +
+        //     arrData[14] +
+        //     " " +
+        //     arrData[15] +
+        //     " " +
+        //     arrData[16]
+       // );
+      // console.log("Name :" + arrData[21] + " " + arrData[22]);
+      // console.log("Father's Name :" + arrData[28] + " " + arrData[29]);
+      // console.log("Date of Birth :" + arrData[38]);
+      // console.log("PAN Number :" + arrData[17]);
       updateContent(res, token, arrData, contentId,fileName);
     },
     function (error) {
@@ -261,9 +261,9 @@ function updateContent(res, token, arrData, contentId,fileName) {
     repositoryId: "57277A5B27D54A158CF94E6C0B3386E4",
     name: fileName,
     fields: {
-      document_id: arrData[17],
-      customer_name: arrData[21] + " " + arrData[22],
-      document_type: (arrData[13]+" "+ arrData[14]+" "+arrData[15])
+      document_id: arrData[13],
+      customer_name: arrData[17] + " " + arrData[18],
+      document_type: getDocumentType(arrData)
     },
   };
 
@@ -290,6 +290,15 @@ function updateContent(res, token, arrData, contentId,fileName) {
     .catch(function (error) {
       console.log(error);
     });
+}
+function getDocumentType(arrData){
+  if(arrData){
+    if(arrData[9]== 'Permanent'){
+      return 'PAN Card'
+    }
+  }else{
+    return "Invalid";
+  }
 }
 
 app.listen(config.get("server.port"), () =>
