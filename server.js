@@ -6,6 +6,7 @@ const fs = require("fs");
 const gm = require("gm").subClass({ imageMagick: true });
 
 const { spawnSync } = require("child_process");
+const { exit } = require("process");
 
 const configurationFilePath = "~/.oci/config";
 const profile = "DEFAULT";
@@ -243,6 +244,19 @@ async function downloadContent(params,callback) {
     responseType: "stream",
   };
 
+  //Get content details
+  await axios
+      .get(`${config.get("apiURL")}items/${params.contentId}`,
+      {headers: { Authorization: `Bearer ${params.token}` }}
+      ).then((response) => {
+        console.log("Content Detail response");
+        params["fields"] = response.data.fields;
+      })
+      .catch((err) => {
+        console.log("Error content Details" + err);
+
+      });
+  
   await axios
     .get(contentURL, header, { responseType: "stream" })
     .then((response) => {
@@ -407,17 +421,18 @@ async function updateItem(params,fileOnly ='N') { //fileOnly Y or N, default is 
   //console.log(tags);
   if(fileOnly === 'N'){
   let documentData = getDocumentData(params.data);
+  let fieldsData = params.fields;
+  fieldsData["document_id"] =documentData.documentId;
+  fieldsData["customer_name"] = documentData.name;
+  fieldsData["document_type"] = getDocumentType(params.data);
+
   var payload = {
     id: params.contentId,
     type: "KYC-Asset",
     typeCategory: "DigitalAssetType",
     repositoryId: config.get("repoId"),
     name: params.documentName,
-    fields: {
-      document_id: documentData.documentId,
-      customer_name: documentData.name,
-      document_type: getDocumentType(params.data),
-    },
+    fields: fieldsData,
   };
   form.append("item", JSON.stringify(payload));
 }
