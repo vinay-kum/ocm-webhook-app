@@ -428,7 +428,7 @@ async function updateItem(params,fileOnly ='N') { //fileOnly Y or N, default is 
 
   var payload = {
     id: params.contentId,
-    type: "KYC-Asset",
+    type: "KYCDocument",
     typeCategory: "DigitalAssetType",
     repositoryId: config.get("repoId"),
     name: params.documentName,
