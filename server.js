@@ -1,3 +1,4 @@
+const https = require("https");
 const express = require("express");
 const bodyParser = require("body-parser");
 const axios = require("axios");
@@ -115,28 +116,32 @@ app.post("/notify", jsonParser, (req, res) => {
   let contentId, documentName;
 
   if (req.body.event.name === "DIGITALASSET_CREATED") {
-
     contentId = req.body.entity.id;
     documentName = req.body.entity.name;
     console.log("New Asset Payload Content ID:" + contentId);
-    downloadContent({
-      response: res,
-      token: accessToken,
-      contentId: contentId,
-      documentName: documentName,
-    },extractData);
-  } else if(req.body.event.name === "DIGITALASSET_APPROVED") {
+    downloadContent(
+      {
+        response: res,
+        token: accessToken,
+        contentId: contentId,
+        documentName: documentName,
+      },
+      extractData
+    );
+  } else if (req.body.event.name === "DIGITALASSET_APPROVED") {
     contentId = req.body.entity.id;
     documentName = req.body.entity.name;
     console.log("Approved Asset Payload Content ID:" + contentId);
-    downloadContent({
-      response: res,
-      token : accessToken,
-      contentId : contentId,
-      documentName: documentName
-    },watermarkContent);
-  }
-  else {
+    downloadContent(
+      {
+        response: res,
+        token: accessToken,
+        contentId: contentId,
+        documentName: documentName,
+      },
+      watermarkContent
+    );
+  } else {
     res.send("Invalid payload to process");
   }
   //Get content ID from payload
@@ -202,8 +207,8 @@ function getContentDetails(token, contentId) {
       console.log("Error content Details" + err);
     });
 }
-async function watermarkContent(params){
-console.log("inside watermark Start");
+async function watermarkContent(params) {
+  console.log("inside watermark Start");
   //generate watermark
   let fileName = params.fileName;
   gm(fileName).size((err, value) => {
@@ -217,19 +222,16 @@ console.log("inside watermark Start");
         .write(fileName, function (err) {
           if (!err) {
             console.log("Watermark Generated!!!");
-            updateItem(params,'Y');
-        }
-          else console.log(err);
+            updateItem(params, "Y");
+          } else console.log(err);
         });
     }
   });
 
   //upload content
-  
-
 }
 
-async function downloadContent(params,callback) {
+async function downloadContent(params, callback) {
   //res, token, contentId, documentName
   console.log("Inside downloadContent with params:" + params);
   const contentURL =
@@ -246,17 +248,17 @@ async function downloadContent(params,callback) {
 
   //Get content details
   await axios
-      .get(`${config.get("apiURL")}items/${params.contentId}`,
-      {headers: { Authorization: `Bearer ${params.token}` }}
-      ).then((response) => {
-        console.log("Content Detail response");
-        params["fields"] = response.data.fields;
-      })
-      .catch((err) => {
-        console.log("Error content Details" + err);
+    .get(`${config.get("apiURL")}items/${params.contentId}`, {
+      headers: { Authorization: `Bearer ${params.token}` },
+    })
+    .then((response) => {
+      console.log("Content Detail response");
+      params["fields"] = response.data.fields;
+    })
+    .catch((err) => {
+      console.log("Error content Details" + err);
+    });
 
-      });
-  
   await axios
     .get(contentURL, header, { responseType: "stream" })
     .then((response) => {
@@ -407,48 +409,52 @@ async function redactContent(params) {
   });
 }
 
-async function updateItem(params,fileOnly ='N') { //fileOnly Y or N, default is N
+async function updateItem(params, fileOnly = "N") {
+  //fileOnly Y or N, default is N
   console.log("Inside updateItem with param:" + params);
 
-  const updateURL =  config.get("apiURL") + "items/" + params.contentId;
+  const updateURL = config.get("apiURL") + "items/" + params.contentId;
   const FormData = require("form-data");
 
   // Create a new form instance
   const form = new FormData();
 
   console.log(updateURL);
-  
-  //console.log(tags);
-  if(fileOnly === 'N'){
-  let documentData = getDocumentData(params.data);
-  let fieldsData = params.fields;
-  fieldsData["document_id"] =documentData.documentId;
-  fieldsData["customer_name"] = documentData.name;
-  fieldsData["document_type"] = getDocumentType(params.data);
 
-  var payload = {
-    id: params.contentId,
-    type: "KYCDocument",
-    typeCategory: "DigitalAssetType",
-    repositoryId: config.get("repoId"),
-    name: params.documentName,
-    fields: fieldsData,
-  };
-  form.append("item", JSON.stringify(payload));
-}
+  //console.log(tags);
+  if (fileOnly === "N") {
+    let documentData = getDocumentData(params.data);
+    let fieldsData = params.fields;
+    fieldsData["document_id"] = documentData.documentId;
+    fieldsData["customer_name"] = documentData.name;
+    fieldsData["document_type"] = getDocumentType(params.data);
+
+    var payload = {
+      id: params.contentId,
+      type: "KYCDocument",
+      typeCategory: "DigitalAssetType",
+      repositoryId: config.get("repoId"),
+      name: params.documentName,
+      fields: fieldsData,
+    };
+    form.append("item", JSON.stringify(payload));
+  }
   console.log("Before Form creation" + __dirname + params.fileName);
   const file = fs.readFileSync(params.fileName);
 
   console.log(JSON.stringify(payload));
 
   //form.append("item", JSON.stringify(payload));
-  form.append("file", file,{filename : params.fileName, "Content-Type" : "image/jpeg"});
+  form.append("file", file, {
+    filename: params.fileName,
+    "Content-Type": "image/jpeg",
+  });
 
   var header = {
     headers: {
-      "Authorization" : `Bearer ${params.token}`,
+      Authorization: `Bearer ${params.token}`,
       ...form.getHeaders(),
-      "X-Requested-With": "XMLHttpRequest"
+      "X-Requested-With": "XMLHttpRequest",
     },
   };
   //console.log(contentUrl);
@@ -466,7 +472,7 @@ async function updateItem(params,fileOnly ='N') { //fileOnly Y or N, default is 
       params.response.sendStatus(200);
     })
     .catch(function (error) {
-      console.log("Error occor"+error );
+      console.log("Error occor" + error);
       console.log(JSON.stringify(error));
       console.log(error);
       console.log(error.response);
@@ -522,6 +528,18 @@ function getPANData(arrData) {
   return { documentId: documentId, name: name, region: region };
 }
 
-app.listen(config.get("server.port"), () =>
-  console.log("Example app is listening on port" + config.get("server.port"))
-);
+// app.listen(config.get("server.port"), () =>
+//   console.log("Example app is listening on port" + config.get("server.port"))
+// );
+
+https
+  .createServer(
+    {
+      key: fs.readFileSync(config.get("server.ssl_key")),
+      cert: fs.readFileSync(config.get("server.ssl_cert")),
+    },
+    app
+  )
+  .listen(3000, () => {
+    console.log("Example app is listening on port" + config.get("server.port"));
+  });

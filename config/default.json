@@ -1,7 +1,9 @@
 {
     "server": {
       "host": "localhost",
-      "port": 3000
+      "port": 3000,
+      "ssl_cert" : "/home/opc/server.cert",
+      "ssl_key" : "/home/opc/server.key"
     },
     "apiURL" : "https://sandbox-oce0002.cec.ocp.oraclecloud.com/content/management/api/v1.1/",
     "baseURL": "https://sandbox-oce0002.cec.ocp.oraclecloud.com/",
